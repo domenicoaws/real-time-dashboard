@@ -7,6 +7,15 @@ Globals:
   Function:
     Timeout: 3
 
+
+
+Parameters:
+  ElasticSearchAdminUsername:
+    Type: String
+  ElasticSearchAdminPassword:
+    Type: String
+    NoEcho: true
+
 Resources:
   ApiGatewayCloudWatchLogsRole:
     Type: AWS::IAM::Role
@@ -80,6 +89,47 @@ Resources:
             Method: get
             RestApiId:
               Ref: ApiGateway
+  ElasticsearchDomain:
+    Type: AWS::Elasticsearch::Domain
+    Properties:
+      DomainName: multi-tenant-realtime
+      AdvancedSecurityOptions:
+        Enabled: true
+        InternalUserDatabaseEnabled: true
+        MasterUserOptions: 
+          MasterUserName: 
+            Ref: ElasticSearchAdminUsername
+          MasterUserPassword:
+            Ref: ElasticSearchAdminPassword
+      NodeToNodeEncryptionOptions:
+          Enabled: true
+      DomainEndpointOptions:
+          EnforceHTTPS: true
+      EncryptionAtRestOptions: 
+          Enabled: true
+      ElasticsearchVersion: '7.9'
+      ElasticsearchClusterConfig: 
+          DedicatedMasterEnabled: false
+          InstanceCount: 1
+          InstanceType: c4.large.elasticsearch
+          ZoneAwarenessEnabled: false
+      EBSOptions:
+        EBSEnabled: 'true'
+        Iops: 0
+        VolumeSize: 10
+        VolumeType: gp2
+      SnapshotOptions:
+        AutomatedSnapshotStartHour: '0'
+      AccessPolicies:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            AWS: '*'
+          Action: es:*
+          Resource: '*'
+      AdvancedOptions:
+        rest.action.multi.allow_explicit_index: 'true'
 
 Outputs:
   ProductServiceApi:
