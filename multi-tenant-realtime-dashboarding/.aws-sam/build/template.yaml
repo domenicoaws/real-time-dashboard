@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: 'multi-tenant-realtime-dashboard
+
+  '
+Globals:
+  Function:
+    Timeout: 3
+Resources:
+  ApiGatewayCloudWatchLogsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Action:
+          - sts:AssumeRole
+          Effect: Allow
+          Principal:
+            Service:
+            - apigateway.amazonaws.com
+        Version: '2012-10-17'
+      Path: /
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+  AuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: AuthorizerFunction
+      Handler: authorizer.handler
+      Runtime: nodejs12.x
+  ApiGateway:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: Prod
+      EndpointConfiguration:
+        Type: REGIONAL
+      Auth:
+        DefaultAuthorizer: LambdaAuthorizer
+        Authorizers:
+          LambdaAuthorizer:
+            FunctionPayloadType: REQUEST
+            Identity:
+              Context:
+              - apiId
+              ReauthorizeEvery: 0
+            FunctionArn:
+              Fn::GetAtt:
+              - AuthorizerFunction
+              - Arn
+  ApiGatewayAccount:
+    Type: AWS::ApiGateway::Account
+    Properties:
+      CloudWatchRoleArn:
+        Fn::GetAtt:
+        - ApiGatewayCloudWatchLogsRole
+        - Arn
+  Deployment:
+    Type: AWS::ApiGateway::Deployment
+    Properties:
+      RestApiId:
+        Ref: ApiGateway
+      Description: Prod deployment
+      StageName: Prod
+  ProdStage:
+    Type: AWS::ApiGateway::Stage
+    Properties:
+      RestApiId:
+        Ref: ApiGateway
+      DeploymentId:
+        Ref: Deployment
+      StageName: v1
+      AccessLogSetting:
+        DestinationArn: arn:aws:logs:eu-west-1:316862305963:log-group:apigateway
+        Format: '{''requestId'':''$context.requestId'',''tenantId'': ''$context.authorizer.tenantId''}'
+  ProductServiceFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ProductServiceFunction
+      Handler: app.lambdaHandler
+      Runtime: nodejs12.x
+      Events:
+        ProductServiceApi:
+          Type: Api
+          Properties:
+            Path: /{tenantId}/products
+            Method: get
+            RestApiId:
+              Ref: ApiGateway
+Outputs:
+  ProductServiceApi:
+    Description: API Gateway endpoint URL for v1 stage for product service
+    Value:
+      Fn::Sub: https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/v1/{tenantId}/products/
