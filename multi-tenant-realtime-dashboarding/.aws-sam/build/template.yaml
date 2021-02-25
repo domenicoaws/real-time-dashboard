@@ -124,7 +124,7 @@ Resources:
           - ElasticsearchDomain
           - DomainArn
         IndexName: realtime
-        IndexRotationPeriod: OneHour
+        IndexRotationPeriod: OneWeek
         RetryOptions:
           DurationInSeconds: 60
         RoleARN:

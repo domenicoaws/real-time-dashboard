@@ -1,7 +1,6 @@
 exports.handler = (event, context, callback) => {
     const output = event.records.map((record) => {
         const payload =JSON.parse((Buffer.from(record.data, 'base64').toString()))
-        console.log("date before processing is " + payload.timestamp)
         const resultPayLoad = {
                 timestamp : new Date(payload.timestamp),
                 tenantId : payload.tenantId,
@@ -14,7 +13,6 @@ exports.handler = (event, context, callback) => {
                 http_protocol: payload.protocol,
                 response_length: payload.responseLength
             };
-        console.log(resultPayLoad.timestamp)
         return{
             recordId: record.recordId,
             result: 'Ok',

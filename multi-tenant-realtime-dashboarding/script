@@ -2,3 +2,5 @@ sam build
 sam deploy --guided
 
 map delivery role to backend user in elastic search
+
+map elastic search admin role to backend user
