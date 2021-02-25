@@ -8,4 +8,4 @@ s3_prefix = "multi-tenant-realtime-dashboard"
 region = "eu-west-1"
 confirm_changeset = true
 capabilities = "CAPABILITY_IAM"
-parameter_overrides = "ElasticSearchAdminUsername=\"Admin\""
+parameter_overrides = "ElasticSearchAdminUsername=\"admin\""

@@ -7,8 +7,6 @@ Globals:
   Function:
     Timeout: 3
 
-
-
 Parameters:
   ElasticSearchAdminUsername:
     Type: String
@@ -17,6 +15,154 @@ Parameters:
     NoEcho: true
 
 Resources:
+  ElasticsearchDomain:
+    Type: AWS::Elasticsearch::Domain
+    Properties:
+      DomainName: multi-tenant-realtime
+      AdvancedSecurityOptions:
+        Enabled: true
+        InternalUserDatabaseEnabled: true
+        MasterUserOptions: 
+          MasterUserName: 
+            Ref: ElasticSearchAdminUsername
+          MasterUserPassword:
+            Ref: ElasticSearchAdminPassword
+      NodeToNodeEncryptionOptions:
+          Enabled: true
+      DomainEndpointOptions:
+          EnforceHTTPS: true
+      EncryptionAtRestOptions: 
+          Enabled: true
+      ElasticsearchVersion: '7.9'
+      ElasticsearchClusterConfig: 
+          DedicatedMasterEnabled: false
+          InstanceCount: 1
+          InstanceType: c4.large.elasticsearch
+          ZoneAwarenessEnabled: false
+      EBSOptions:
+        EBSEnabled: 'true'
+        Iops: 0
+        VolumeSize: 10
+        VolumeType: gp2
+      SnapshotOptions:
+        AutomatedSnapshotStartHour: '0'
+      AccessPolicies:
+        Version: 2012-10-17
+        Statement:
+        - Effect: Allow
+          Principal:
+            AWS: '*'
+          Action: es:*
+          Resource: '*'
+      AdvancedOptions:
+        rest.action.multi.allow_explicit_index: 'true'
+  ProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: processor/
+      Handler: processor.handler
+      Runtime: nodejs12.x
+      Timeout: 60
+      Role: !GetAtt ProcessorFunctionRole.Arn
+  ProcessorFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+          Condition: {}
+      Path: /
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AmazonKinesisFirehoseFullAccess
+
+  FirehoseBackupS3Bucket:
+    Type: AWS::S3::Bucket
+
+  DeliverystreamRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: firehose.amazonaws.com
+          Action: sts:AssumeRole
+          Condition: {}
+      Path: /
+      Policies:
+      - PolicyName: Allow
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - s3:*
+            - kms:*
+            - kinesis:*
+            - logs:*
+            - lambda:*
+            - es:*
+            Resource:
+            - '*'
+
+  Deliverystream:
+    Type: AWS::KinesisFirehose::DeliveryStream
+    Properties:
+      DeliveryStreamName: amazon-apigateway-firehose
+      DeliveryStreamType: DirectPut
+      ElasticsearchDestinationConfiguration:
+        BufferingHints:
+          IntervalInSeconds: 60
+          SizeInMBs: 1
+        CloudWatchLoggingOptions:
+          Enabled: true
+          LogGroupName: firehose-logs
+          LogStreamName: firehose-logs
+        DomainARN: !GetAtt ElasticsearchDomain.DomainArn
+        IndexName: realtime
+        IndexRotationPeriod: OneHour
+        RetryOptions:
+          DurationInSeconds: 60
+        RoleARN: !GetAtt DeliverystreamRole.Arn
+        S3BackupMode: FailedDocumentsOnly
+        S3Configuration:
+          BucketARN: !GetAtt FirehoseBackupS3Bucket.Arn
+          BufferingHints:
+            IntervalInSeconds: 60
+            SizeInMBs: 1
+          CompressionFormat: UNCOMPRESSED
+          RoleARN: !GetAtt DeliverystreamRole.Arn
+        ProcessingConfiguration:
+          Enabled: true
+          Processors:
+          - Type: Lambda
+            Parameters:
+            - ParameterName: LambdaArn
+              ParameterValue: !GetAtt ProcessorFunction.Arn
+            - ParameterName: RoleArn
+              ParameterValue: !GetAtt DeliverystreamRole.Arn
+            - ParameterName: NumberOfRetries
+              ParameterValue: '3'
+            - ParameterName: BufferSizeInMBs
+              ParameterValue: '1'
+            - ParameterName: BufferIntervalInSeconds
+              ParameterValue: '60'
+  CloudWatchLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: firehose-logs
+      RetentionInDays: 1
+  CloudWatchLogStream:
+    Type: AWS::Logs::LogStream
+    DependsOn:
+    - CloudWatchLogGroup
+    Properties:
+      LogGroupName: firehose-logs
+      LogStreamName: firehose-logs
+
   ApiGatewayCloudWatchLogsRole:
     Type: AWS::IAM::Role
     Properties:
@@ -73,8 +219,8 @@ Resources:
       DeploymentId: !Ref Deployment
       StageName: "v1"
       AccessLogSetting: 
-        DestinationArn: arn:aws:logs:eu-west-1:316862305963:log-group:apigateway
-        Format: "{'requestId':'$context.requestId','tenantId': '$context.authorizer.tenantId'}"
+        DestinationArn: !GetAtt Deliverystream.Arn
+        Format: '{ "requestId":"$context.requestId", "ip": "$context.identity.sourceIp", "timestamp":$context.requestTimeEpoch, "httpMethod":"$context.httpMethod","resourcePath":"$context.resourcePath", "status":$context.status,"protocol":"$context.protocol", "responseLength":$context.responseLength, "tenantId":"$context.authorizer.tenantId", "latency":$context.responseLatency }'
   ProductServiceFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -89,47 +235,6 @@ Resources:
             Method: get
             RestApiId:
               Ref: ApiGateway
-  ElasticsearchDomain:
-    Type: AWS::Elasticsearch::Domain
-    Properties:
-      DomainName: multi-tenant-realtime
-      AdvancedSecurityOptions:
-        Enabled: true
-        InternalUserDatabaseEnabled: true
-        MasterUserOptions: 
-          MasterUserName: 
-            Ref: ElasticSearchAdminUsername
-          MasterUserPassword:
-            Ref: ElasticSearchAdminPassword
-      NodeToNodeEncryptionOptions:
-          Enabled: true
-      DomainEndpointOptions:
-          EnforceHTTPS: true
-      EncryptionAtRestOptions: 
-          Enabled: true
-      ElasticsearchVersion: '7.9'
-      ElasticsearchClusterConfig: 
-          DedicatedMasterEnabled: false
-          InstanceCount: 1
-          InstanceType: c4.large.elasticsearch
-          ZoneAwarenessEnabled: false
-      EBSOptions:
-        EBSEnabled: 'true'
-        Iops: 0
-        VolumeSize: 10
-        VolumeType: gp2
-      SnapshotOptions:
-        AutomatedSnapshotStartHour: '0'
-      AccessPolicies:
-        Version: 2012-10-17
-        Statement:
-        - Effect: Allow
-          Principal:
-            AWS: '*'
-          Action: es:*
-          Resource: '*'
-      AdvancedOptions:
-        rest.action.multi.allow_explicit_index: 'true'
 
 Outputs:
   ProductServiceApi:
