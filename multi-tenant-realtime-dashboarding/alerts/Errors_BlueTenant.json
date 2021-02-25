@@ -1,0 +1,30 @@
+{ 
+    "query": {
+        "bool": {
+            "must": [
+                {
+                    "match": { 
+                        "status_code": {
+                            "query": "500"
+                        }
+                    }
+                },
+                {
+                    "match" : {
+                        "tenantId" : {
+                            "query" : "BlueTenant"
+                        }
+                    }
+                }
+            ,
+            {
+                "range" : {
+                    "timestamp" : {
+                        "gte" : "now-5m"
+                    }
+                }
+            }
+            ]
+        }
+    }
+}

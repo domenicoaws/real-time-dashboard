@@ -108,6 +108,34 @@ Resources:
             Resource:
             - '*'
 
+  KibanaAlertSnsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      Subscription:
+      - Endpoint: "domenmus@amazon.com"
+        Protocol: email
+
+  ElasticSearchToSnsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: es.amazonaws.com
+          Action: sts:AssumeRole
+          Condition: {}
+      Path: /
+      Policies:
+      - PolicyName: Allow
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+            - sns:Publish
+            Resource:
+            - !Ref KibanaAlertSnsTopic
+
   Deliverystream:
     Type: AWS::KinesisFirehose::DeliveryStream
     Properties:
