@@ -1,10 +1,7 @@
+const jwt = require('jsonwebtoken');
+
 exports.lambdaHandler = async (event) => {
-    console.log(JSON.stringify(event))
-    var pathParameters = event['pathParameters'];
-    var tenantId = "unknown"
-    if(pathParameters){
-        tenantId = event['pathParameters']['tenantId']
-    }
+    const tenantId = event.requestContext.authorizer.tenantId
     if(event["queryStringParameters"] && event["queryStringParameters"]['generate_error']){
         return {
             statusCode:500

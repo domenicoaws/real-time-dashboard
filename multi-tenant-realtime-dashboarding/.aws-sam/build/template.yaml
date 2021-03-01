@@ -286,7 +286,7 @@ Resources:
         ProductServiceApi:
           Type: Api
           Properties:
-            Path: /{tenantId}/products
+            Path: /products
             Method: get
             RestApiId:
               Ref: ApiGateway
@@ -308,4 +308,4 @@ Outputs:
   ProductServiceApi:
     Description: API Gateway endpoint URL for v1 stage for product service
     Value:
-      Fn::Sub: https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/v1/{tenantId}/products/
+      Fn::Sub: https://${ApiGateway}.execute-api.${AWS::Region}.amazonaws.com/v1/products/
