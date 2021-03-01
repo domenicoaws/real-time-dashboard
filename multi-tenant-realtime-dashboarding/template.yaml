@@ -78,6 +78,20 @@ Resources:
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       - arn:aws:iam::aws:policy/AmazonKinesisFirehoseFullAccess
+  AuthorizerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+          Condition: {}
+      Path: /
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AmazonSSMFullAccess
 
   FirehoseBackupS3Bucket:
     Type: AWS::S3::Bucket
@@ -213,6 +227,7 @@ Resources:
       CodeUri: authorizer/
       Handler: authorizer.handler
       Runtime: nodejs12.x
+      Role: !GetAtt AuthorizerLambdaRole.Arn
   ApiGateway:
     Type: AWS::Serverless::Api
     Properties:
@@ -229,6 +244,8 @@ Resources:
                 - apiId
               ReauthorizeEvery: 0
             FunctionArn: !GetAtt AuthorizerFunction.Arn
+            FunctionInvokeRole: !GetAtt AuthorizerLambdaRole.Arn
+
   ApiGatewayAccount:
     Type: AWS::ApiGateway::Account
     Properties:
@@ -269,6 +286,7 @@ Resources:
       CodeUri: login/
       Handler: login.handler
       Runtime: nodejs12.x
+      Role: !GetAtt LoginFunctionRole.Arn
       Events:
         ProductServiceApi:
           Type: Api 
@@ -277,6 +295,20 @@ Resources:
             Method: post
             RestApiId:
               Ref: ApiGateway
+  LoginFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+          Condition: {}
+      Path: /
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AmazonSSMFullAccess
 
 Outputs:
   ProductServiceApi:

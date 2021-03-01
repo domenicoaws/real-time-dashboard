@@ -79,6 +79,20 @@ Resources:
       ManagedPolicyArns:
       - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
       - arn:aws:iam::aws:policy/AmazonKinesisFirehoseFullAccess
+  AuthorizerLambdaRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+          Condition: {}
+      Path: /
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AmazonSSMFullAccess
   FirehoseBackupS3Bucket:
     Type: AWS::S3::Bucket
   DeliverystreamRole:
@@ -225,6 +239,10 @@ Resources:
       CodeUri: AuthorizerFunction
       Handler: authorizer.handler
       Runtime: nodejs12.x
+      Role:
+        Fn::GetAtt:
+        - AuthorizerLambdaRole
+        - Arn
   ApiGateway:
     Type: AWS::Serverless::Api
     Properties:
@@ -243,6 +261,10 @@ Resources:
             FunctionArn:
               Fn::GetAtt:
               - AuthorizerFunction
+              - Arn
+            FunctionInvokeRole:
+              Fn::GetAtt:
+              - AuthorizerLambdaRole
               - Arn
   ApiGatewayAccount:
     Type: AWS::ApiGateway::Account
@@ -296,6 +318,10 @@ Resources:
       CodeUri: LoginFunction
       Handler: login.handler
       Runtime: nodejs12.x
+      Role:
+        Fn::GetAtt:
+        - LoginFunctionRole
+        - Arn
       Events:
         ProductServiceApi:
           Type: Api
@@ -304,6 +330,20 @@ Resources:
             Method: post
             RestApiId:
               Ref: ApiGateway
+  LoginFunctionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: lambda.amazonaws.com
+          Action: sts:AssumeRole
+          Condition: {}
+      Path: /
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      - arn:aws:iam::aws:policy/AmazonSSMFullAccess
 Outputs:
   ProductServiceApi:
     Description: API Gateway endpoint URL for v1 stage for product service

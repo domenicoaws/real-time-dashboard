@@ -1,25 +1,25 @@
 const jwt = require('jsonwebtoken');
+const AWS = require("aws-sdk");
+const ssm = new AWS.SSM();
+
 
 exports.handler = async (event) => {
-  console.log("request is " + JSON.stringify(event))
   if(event.path === "/login"){
     return  {
       policyDocument: getAllowPolicyDocument(event)
     }; 
   }
   var token = getAuthorizationToken(event)
-  console.log("token is " + token)
   if(token === null){
     return  {
       policyDocument: getDenyPolicyDocument(event)
     }; 
   }
-  const decodedToken = jwt.verify(token, "secret");
-  const tenantId = decodedToken.user.tenantId
+  
+  const tenantId = await getTenantIdFromToken(token)
   var response =  {
     policyDocument: getAllowPolicyDocument(event)
   };
-  console.log("decoded tenant Id " + tenantId);
   response.context = {
       "tenantId": tenantId
   };
@@ -58,4 +58,13 @@ function getDenyPolicyDocument(event){
       Resource: event.methodArn
     }]
   };
+}
+
+async function getTenantIdFromToken(token){
+  const secret = await ssm.getParameter({
+    Name: 'token_secret',
+    WithDecryption: true
+  }).promise();
+  const decodedToken = jwt.verify(token, secret.Parameter.Value);
+  return decodedToken.user.tenantId;
 }

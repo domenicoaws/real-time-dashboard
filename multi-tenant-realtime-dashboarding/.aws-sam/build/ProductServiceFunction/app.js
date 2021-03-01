@@ -1,5 +1,3 @@
-const jwt = require('jsonwebtoken');
-
 exports.lambdaHandler = async (event) => {
     const tenantId = event.requestContext.authorizer.tenantId
     if(event["queryStringParameters"] && event["queryStringParameters"]['generate_error']){
