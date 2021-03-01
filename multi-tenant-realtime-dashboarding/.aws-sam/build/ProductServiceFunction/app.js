@@ -1,6 +1,7 @@
 exports.lambdaHandler = async (event) => {
     const tenantId = event.requestContext.authorizer.tenantId
     if(event["queryStringParameters"] && event["queryStringParameters"]['generate_error']){
+        console.log("generating an error on purpose")
         return {
             statusCode:500
         }
