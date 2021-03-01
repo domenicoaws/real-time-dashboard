@@ -8,18 +8,25 @@ source_md5 = ""
 packagetype = "Zip"
 functions = ["AuthorizerFunction"]
 
-[function_build_definitions.de45fd39-a5d2-45fa-9957-a5dc56fb1ed4]
-codeuri = "product-service/"
-runtime = "nodejs12.x"
-source_md5 = ""
-packagetype = "Zip"
-functions = ["ProductServiceFunction"]
-
 [function_build_definitions.50117211-b7fd-4ad9-9f00-058af263eb29]
 codeuri = "processor/"
 runtime = "nodejs12.x"
 source_md5 = ""
 packagetype = "Zip"
 functions = ["ProcessorFunction"]
+
+[function_build_definitions.709868e6-6476-41cc-80e9-520ed0a104b2]
+codeuri = "login/"
+runtime = "nodejs12.x"
+source_md5 = ""
+packagetype = "Zip"
+functions = ["LoginFunction"]
+
+[function_build_definitions.4aa36cff-204d-4450-b209-e284162c8669]
+codeuri = "product-service/"
+runtime = "nodejs12.x"
+source_md5 = ""
+packagetype = "Zip"
+functions = ["ProductServiceFunction"]
 
 [layer_build_definitions]

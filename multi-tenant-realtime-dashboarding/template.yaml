@@ -263,6 +263,20 @@ Resources:
             Method: get
             RestApiId:
               Ref: ApiGateway
+  LoginFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: login/
+      Handler: login.handler
+      Runtime: nodejs12.x
+      Events:
+        ProductServiceApi:
+          Type: Api 
+          Properties:
+            Path: /login
+            Method: post
+            RestApiId:
+              Ref: ApiGateway
 
 Outputs:
   ProductServiceApi:
